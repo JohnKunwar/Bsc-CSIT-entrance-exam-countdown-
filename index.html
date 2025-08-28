@@ -1,0 +1,159 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>CSIT Entrance Exam Countdown</title>
+  <style>
+    :root { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, "Noto Sans", "Helvetica Neue", sans-serif; }
+    body { margin: 0; padding: 2rem; background: #0b1020; color: #eef2ff; display: grid; place-items: center; min-height: 100vh; }
+    .card { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.12); border-radius: 1.25rem; padding: 2rem; max-width: 760px; width: 100%; box-shadow: 0 10px 30px rgba(0,0,0,0.3); }
+    h1 { margin: 0 0 1rem; font-size: clamp(1.4rem, 3vw, 2rem); letter-spacing: 0.3px; }
+    .grid { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 1rem; margin: 1.5rem 0; }
+    .pill { background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12); border-radius: 1rem; padding: 1rem; text-align: center; }
+    .num { font-size: clamp(1.8rem, 6vw, 3rem); font-weight: 800; }
+    .lab { opacity: 0.8; font-size: 0.9rem; letter-spacing: 0.4px; }
+    .row { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; }
+    input, button { font: inherit; padding: 0.7rem 0.9rem; border-radius: 0.8rem; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.08); color: #eef2ff; outline: none; }
+    input { min-width: 260px; }
+    button { cursor: pointer; }
+    .hint { font-size: 0.85rem; opacity: 0.85; margin-top: 0.6rem; }
+    .subtle { opacity: 0.7; }
+    .success { color: #b6f2c5; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h1>CSIT Entrance Exam Countdown</h1>
+    <div class="subtle" id="targetLabel"></div>
+    <div class="grid" role="timer" aria-live="polite">
+      <div class="pill"><div class="num" id="days">--</div><div class="lab">Days</div></div>
+      <div class="pill"><div class="num" id="hours">--</div><div class="lab">Hours</div></div>
+      <div class="pill"><div class="num" id="minutes">--</div><div class="lab">Minutes</div></div>
+      <div class="pill"><div class="num" id="seconds">--</div><div class="lab">Seconds</div></div>
+    </div>
+
+    <div class="row">
+      <input id="datetime" type="datetime-local"/>
+      <button id="saveBtn">Save Target</button>
+      <button id="resetBtn" title="Reset to default">Reset</button>
+    </div>
+    <div class="hint">
+      Default target is <b>Bhadra 26, 2082</b> ≈ <b>Sep 13, 2025</b> at <b>08:00</b> (Asia/Kathmandu, UTC+05:45).
+      You can adjust the exact date/time above; it will be saved on this device.
+    </div>
+    <div class="hint" id="status"></div>
+  </div>
+
+<script>
+(function(){
+  // Default: 2025-09-13 08:00 in Nepal time (UTC+05:45)
+  const DEFAULT_ISO = "2025-09-13T08:00:00+05:45";
+  const LS_KEY = "csit_countdown_target";
+
+  function formatTarget(dt) {
+    try {
+      return new Intl.DateTimeFormat(undefined, {
+        dateStyle: "full", timeStyle: "short"
+      }).format(dt);
+    } catch {
+      return dt.toString();
+    }
+  }
+
+  function parseLocalInput(value) {
+    // value like "2025-09-13T08:00"
+    if (!value) return null;
+    // Interpret the input as local time in the user's timezone
+    return new Date(value);
+  }
+
+  function toDatetimeLocalValue(date) {
+    // Convert Date -> "YYYY-MM-DDTHH:mm" in user's local tz
+    const pad = n => String(n).padStart(2, "0");
+    const yyyy = date.getFullYear();
+    const mm = pad(date.getMonth()+1);
+    const dd = pad(date.getDate());
+    const hh = pad(date.getHours());
+    const mi = pad(date.getMinutes());
+    return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
+  }
+
+  function loadTarget() {
+    const saved = localStorage.getItem(LS_KEY);
+    if (saved) {
+      const d = new Date(saved);
+      if (!isNaN(d)) return d;
+    }
+    // Fallback to default ISO (fixed offset)
+    return new Date(DEFAULT_ISO);
+  }
+
+  function saveTarget(date) {
+    localStorage.setItem(LS_KEY, date.toISOString());
+  }
+
+  const targetLabel = document.getElementById("targetLabel");
+  const datetime = document.getElementById("datetime");
+  const saveBtn = document.getElementById("saveBtn");
+  const resetBtn = document.getElementById("resetBtn");
+  const status = document.getElementById("status");
+
+  let target = loadTarget();
+  datetime.value = toDatetimeLocalValue(target);
+  targetLabel.textContent = "Target: " + formatTarget(target);
+
+  saveBtn.addEventListener("click", () => {
+    const d = parseLocalInput(datetime.value);
+    if (d && !isNaN(d)) {
+      target = d;
+      saveTarget(target);
+      targetLabel.textContent = "Target: " + formatTarget(target);
+      status.textContent = "Saved!";
+      status.className = "hint success";
+      setTimeout(() => { status.textContent = ""; }, 1800);
+    } else {
+      status.textContent = "Invalid date/time.";
+      status.className = "hint";
+    }
+  });
+
+  resetBtn.addEventListener("click", () => {
+    target = new Date(DEFAULT_ISO);
+    datetime.value = toDatetimeLocalValue(target);
+    saveTarget(target);
+    targetLabel.textContent = "Target: " + formatTarget(target);
+    status.textContent = "Reset to default.";
+    status.className = "hint success";
+    setTimeout(() => { status.textContent = ""; }, 1800);
+  });
+
+  const el = {
+    d: document.getElementById("days"),
+    h: document.getElementById("hours"),
+    m: document.getElementById("minutes"),
+    s: document.getElementById("seconds"),
+  };
+
+  function tick() {
+    const now = new Date();
+    const diff = Math.max(0, target.getTime() - now.getTime());
+    const sec = Math.floor(diff / 1000);
+    const days = Math.floor(sec / 86400);
+    const hours = Math.floor((sec % 86400) / 3600);
+    const minutes = Math.floor((sec % 3600) / 60);
+    const seconds = sec % 60;
+
+    el.d.textContent = String(days);
+    el.h.textContent = String(hours).padStart(2,"0");
+    el.m.textContent = String(minutes).padStart(2,"0");
+    el.s.textContent = String(seconds).padStart(2,"0");
+
+    requestAnimationFrame(() => setTimeout(tick, 250)); // smooth-ish updates
+  }
+  tick();
+})();
+</script>
+</body>
+</html>
